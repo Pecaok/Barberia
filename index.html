@@ -663,7 +663,7 @@
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.1/firebase-app.js";
-import { getFirestore, collection, doc, getDoc, getDocs, setDoc, addDoc, query, where } from "https://www.gstatic.com/firebasejs/10.13.1/firebase-firestore.js";
+import { getFirestore, collection, doc, getDoc, getDocs, setDoc, addDoc, query, where, onSnapshot } from "https://www.gstatic.com/firebasejs/10.13.1/firebase-firestore.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyAy8bKPcF7EA0BsLFMerbzzFOr-sDhRin4",
@@ -681,17 +681,6 @@ const db = getFirestore(app);
 const DAY_KEYS = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
 
 const DEFAULTS = {
-  services: [
-    { id: 's1', name: 'Corte clásico', duration: 30, price: 12000 },
-    { id: 's2', name: 'Corte + Barba', duration: 45, price: 18000 },
-    { id: 's3', name: 'Afeitado a navaja', duration: 30, price: 14000 },
-    { id: 's4', name: 'Corte de niño', duration: 30, price: 9000 }
-  ],
-  barbers: [
-    { id: 'b1', name: 'Ricardo', specialty: 'Cortes clásicos', bio: '30 años de oficio. Maestro de la navaja.' },
-    { id: 'b2', name: 'Matías', specialty: 'Fade y modernos', bio: 'Especialista en fades y estilos contemporáneos.' },
-    { id: 'b3', name: 'Julián', specialty: 'Barba y bigote', bio: 'Fanático de la barba bien cuidada.' }
-  ],
   hours: {
     mon: { open: '09:00', close: '20:00' },
     tue: { open: '09:00', close: '20:00' },
@@ -716,29 +705,14 @@ async function seedIfNeeded() {
   try {
     const flag = await getDoc(doc(db, 'config', 'initialized'));
     if (flag.exists()) return;
-    const tasks = [];
-    for (const s of DEFAULTS.services) {
-      tasks.push(setDoc(doc(db, 'services', s.id), { name: s.name, duration: s.duration, price: s.price }));
-    }
-    for (const b of DEFAULTS.barbers) {
-      tasks.push(setDoc(doc(db, 'barbers', b.id), { name: b.name, specialty: b.specialty, bio: b.bio }));
-    }
-    tasks.push(setDoc(doc(db, 'config', 'hours'), DEFAULTS.hours));
-    tasks.push(setDoc(doc(db, 'config', 'auth'), { password: 'admin123' }));
-    await Promise.all(tasks);
+    // Solo sembramos la contraseña inicial y horarios por defecto.
+    // Los servicios y barberos los carga el admin manualmente desde el panel.
+    await Promise.all([
+      setDoc(doc(db, 'config', 'hours'), DEFAULTS.hours),
+      setDoc(doc(db, 'config', 'auth'), { password: 'admin123' })
+    ]);
     await setDoc(doc(db, 'config', 'initialized'), { at: new Date().toISOString() });
   } catch (e) { console.error('seed error', e); }
-}
-
-async function loadAll() {
-  const [sSnap, bSnap, hSnap] = await Promise.all([
-    getDocs(collection(db, 'services')),
-    getDocs(collection(db, 'barbers')),
-    getDoc(doc(db, 'config', 'hours'))
-  ]);
-  state.services = sSnap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a,b) => a.id.localeCompare(b.id));
-  state.barbers = bSnap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a,b) => a.id.localeCompare(b.id));
-  state.hours = hSnap.exists() ? hSnap.data() : {};
 }
 
 async function loadApptsForSlot(barberId, date) {
@@ -747,15 +721,44 @@ async function loadApptsForSlot(barberId, date) {
   return snap.docs.map(d => ({ id: d.id, ...d.data() }));
 }
 
+function startLiveListeners() {
+  // Servicios: se actualizan en vivo
+  onSnapshot(collection(db, 'services'), snap => {
+    state.services = snap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a,b) => a.id.localeCompare(b.id));
+    renderServices();
+    renderServiceOptions();
+    // Si el servicio que estaba seleccionado se borró, reseteamos
+    if (state.booking.service && !state.services.find(s => s.id === state.booking.service)) {
+      state.booking.service = null;
+      document.getElementById('btnStep1').disabled = true;
+    }
+  }, err => {
+    console.error(err);
+    toast('Error al cargar servicios', 'error');
+  });
+
+  // Barberos: se actualizan en vivo
+  onSnapshot(collection(db, 'barbers'), snap => {
+    state.barbers = snap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a,b) => a.id.localeCompare(b.id));
+    renderBarbers();
+    renderBarberOptions();
+    if (state.booking.barber && !state.barbers.find(b => b.id === state.booking.barber)) {
+      state.booking.barber = null;
+      document.getElementById('btnStep2').disabled = true;
+    }
+  }, err => console.error(err));
+
+  // Horarios: se actualizan en vivo
+  onSnapshot(doc(db, 'config', 'hours'), snap => {
+    state.hours = snap.exists() ? snap.data() : {};
+    renderContactHours();
+  }, err => console.error(err));
+}
+
 async function init() {
   try {
     await seedIfNeeded();
-    await loadAll();
-    renderServices();
-    renderBarbers();
-    renderServiceOptions();
-    renderBarberOptions();
-    renderContactHours();
+    startLiveListeners();
     const today = new Date().toISOString().split('T')[0];
     const dateInput = document.getElementById('bookingDate');
     if (dateInput) dateInput.setAttribute('min', today);
@@ -767,7 +770,7 @@ async function init() {
 
 function renderServices() {
   const el = document.getElementById('servicesList');
-  if (!state.services.length) { el.innerHTML = '<div class="empty-state">Próximamente</div>'; return; }
+  if (!state.services.length) { el.innerHTML = '<div class="empty-state">Próximamente cargaremos nuestra carta de servicios.</div>'; return; }
   el.innerHTML = state.services.map((s, i) => `
     <div class="service-row">
       <div class="service-num">${String(i+1).padStart(2, '0')}</div>
@@ -780,7 +783,7 @@ function renderServices() {
 
 function renderBarbers() {
   const el = document.getElementById('barbersList');
-  if (!state.barbers.length) { el.innerHTML = '<div class="empty-state" style="grid-column:1/-1">Próximamente</div>'; return; }
+  if (!state.barbers.length) { el.innerHTML = '<div class="empty-state" style="grid-column:1/-1">Próximamente te presentamos al equipo.</div>'; return; }
   el.innerHTML = state.barbers.map(b => `
     <div class="barber-card">
       <div class="barber-avatar">${b.name.charAt(0).toUpperCase()}</div>
@@ -805,6 +808,10 @@ function renderContactHours() {
 
 function renderServiceOptions() {
   const el = document.getElementById('serviceOptions');
+  if (!state.services.length) {
+    el.innerHTML = '<div class="empty-state" style="grid-column:1/-1">Aún no hay servicios disponibles. Volvé pronto.</div>';
+    return;
+  }
   el.innerHTML = state.services.map(s => `
     <div class="option-card" onclick="selectService('${s.id}')" data-id="${s.id}">
       <div class="title">${escapeHtml(s.name)}</div>
@@ -816,6 +823,10 @@ function renderServiceOptions() {
 
 function renderBarberOptions() {
   const el = document.getElementById('barberOptions');
+  if (!state.barbers.length) {
+    el.innerHTML = '<div class="empty-state" style="grid-column:1/-1">Aún no hay barberos disponibles. Volvé pronto.</div>';
+    return;
+  }
   el.innerHTML = state.barbers.map(b => `
     <div class="option-card" onclick="selectBarber('${b.id}')" data-id="${b.id}">
       <div class="title">${escapeHtml(b.name)}</div>
