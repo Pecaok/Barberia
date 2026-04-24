@@ -661,7 +661,23 @@
 
 <div class="toast" id="toast"></div>
 
-<script>
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.1/firebase-app.js";
+import { getFirestore, collection, doc, getDoc, getDocs, setDoc, addDoc, query, where } from "https://www.gstatic.com/firebasejs/10.13.1/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyAy8bKPcF7EA0BsLFMerbzzFOr-sDhRin4",
+  authDomain: "fir-f0e7f.firebaseapp.com",
+  projectId: "fir-f0e7f",
+  storageBucket: "fir-f0e7f.firebasestorage.app",
+  messagingSenderId: "436473060198",
+  appId: "1:436473060198:web:ea9e7c208758cee29a86a7",
+  measurementId: "G-TY1QWHR65P"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+
 const DAY_KEYS = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
 
 const DEFAULTS = {
@@ -691,43 +707,62 @@ const state = {
   services: [],
   barbers: [],
   hours: {},
-  appointments: [],
   booking: { service: null, barber: null, date: null, time: null },
   currentStep: 1
 };
 
-function storageGet(key, def) {
+// ======= FIRESTORE HELPERS =======
+async function seedIfNeeded() {
   try {
-    const r = localStorage.getItem(key);
-    return r ? JSON.parse(r) : def;
-  } catch { return def; }
+    const flag = await getDoc(doc(db, 'config', 'initialized'));
+    if (flag.exists()) return;
+    const tasks = [];
+    for (const s of DEFAULTS.services) {
+      tasks.push(setDoc(doc(db, 'services', s.id), { name: s.name, duration: s.duration, price: s.price }));
+    }
+    for (const b of DEFAULTS.barbers) {
+      tasks.push(setDoc(doc(db, 'barbers', b.id), { name: b.name, specialty: b.specialty, bio: b.bio }));
+    }
+    tasks.push(setDoc(doc(db, 'config', 'hours'), DEFAULTS.hours));
+    tasks.push(setDoc(doc(db, 'config', 'auth'), { password: 'admin123' }));
+    await Promise.all(tasks);
+    await setDoc(doc(db, 'config', 'initialized'), { at: new Date().toISOString() });
+  } catch (e) { console.error('seed error', e); }
 }
-function storageSet(key, val) {
+
+async function loadAll() {
+  const [sSnap, bSnap, hSnap] = await Promise.all([
+    getDocs(collection(db, 'services')),
+    getDocs(collection(db, 'barbers')),
+    getDoc(doc(db, 'config', 'hours'))
+  ]);
+  state.services = sSnap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a,b) => a.id.localeCompare(b.id));
+  state.barbers = bSnap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a,b) => a.id.localeCompare(b.id));
+  state.hours = hSnap.exists() ? hSnap.data() : {};
+}
+
+async function loadApptsForSlot(barberId, date) {
+  const q = query(collection(db, 'appointments'), where('barberId', '==', barberId), where('date', '==', date));
+  const snap = await getDocs(q);
+  return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+}
+
+async function init() {
   try {
-    localStorage.setItem(key, JSON.stringify(val));
-    return true;
-  } catch { return false; }
-}
-
-function init() {
-  state.services = storageGet('bs_services', null) || DEFAULTS.services;
-  state.barbers = storageGet('bs_barbers', null) || DEFAULTS.barbers;
-  state.hours = storageGet('bs_hours', null) || DEFAULTS.hours;
-  state.appointments = storageGet('bs_appts', []);
-
-  if (!storageGet('bs_services', null)) storageSet('bs_services', state.services);
-  if (!storageGet('bs_barbers', null)) storageSet('bs_barbers', state.barbers);
-  if (!storageGet('bs_hours', null)) storageSet('bs_hours', state.hours);
-
-  renderServices();
-  renderBarbers();
-  renderServiceOptions();
-  renderBarberOptions();
-  renderContactHours();
-
-  const today = new Date().toISOString().split('T')[0];
-  const dateInput = document.getElementById('bookingDate');
-  if (dateInput) dateInput.setAttribute('min', today);
+    await seedIfNeeded();
+    await loadAll();
+    renderServices();
+    renderBarbers();
+    renderServiceOptions();
+    renderBarberOptions();
+    renderContactHours();
+    const today = new Date().toISOString().split('T')[0];
+    const dateInput = document.getElementById('bookingDate');
+    if (dateInput) dateInput.setAttribute('min', today);
+  } catch (e) {
+    console.error('init error', e);
+    toast('Error de conexión. Revisá tus reglas de Firestore o recargá.', 'error');
+  }
 }
 
 function renderServices() {
@@ -814,7 +849,7 @@ function goStep(n) {
   document.getElementById('turnos').scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
-function renderTimeSlots() {
+async function renderTimeSlots() {
   const date = document.getElementById('bookingDate').value;
   const el = document.getElementById('timeSlots');
   if (!date) { el.innerHTML = '<div class="empty-state" style="grid-column:1/-1">Seleccioná una fecha</div>'; return; }
@@ -831,6 +866,8 @@ function renderTimeSlots() {
     return;
   }
 
+  el.innerHTML = '<div class="empty-state" style="grid-column:1/-1"><span class="loading"></span> Cargando horarios...</div>';
+
   const service = state.services.find(s => s.id === state.booking.service);
   const dur = service ? service.duration : 30;
 
@@ -846,11 +883,16 @@ function renderTimeSlots() {
     mins += 30;
   }
 
-  // Re-read latest appointments in case they changed
-  state.appointments = storageGet('bs_appts', []);
-  const booked = state.appointments
-    .filter(a => a.barberId === state.booking.barber && a.date === date)
-    .map(a => a.time);
+  let booked = [];
+  try {
+    const appts = await loadApptsForSlot(state.booking.barber, date);
+    booked = appts.map(a => a.time);
+  } catch (e) {
+    console.error(e);
+    toast('Error al cargar horarios', 'error');
+    el.innerHTML = '<div class="empty-state" style="grid-column:1/-1">Error al cargar. Probá de nuevo.</div>';
+    return;
+  }
 
   const now = new Date();
   const isToday = date === now.toISOString().split('T')[0];
@@ -887,7 +929,7 @@ function renderSummary() {
   `;
 }
 
-function confirmBooking() {
+async function confirmBooking() {
   const name = document.getElementById('clientName').value.trim();
   const phone = document.getElementById('clientPhone').value.trim();
   if (!name || !phone) { toast('Completá nombre y teléfono', 'error'); return; }
@@ -895,45 +937,42 @@ function confirmBooking() {
   btn.disabled = true;
   btn.innerHTML = '<span class="loading"></span> Confirmando...';
 
-  const appt = {
-    id: 'a' + Date.now(),
-    serviceId: state.booking.service,
-    barberId: state.booking.barber,
-    date: state.booking.date,
-    time: state.booking.time,
-    clientName: name,
-    clientPhone: phone,
-    createdAt: new Date().toISOString()
-  };
+  try {
+    // Re-check conflict at the last moment
+    const existing = await loadApptsForSlot(state.booking.barber, state.booking.date);
+    if (existing.some(a => a.time === state.booking.time)) {
+      toast('Ese horario ya fue tomado. Elegí otro.', 'error');
+      btn.disabled = false;
+      btn.innerHTML = 'Confirmar turno ✓';
+      await renderTimeSlots();
+      goStep(3);
+      return;
+    }
 
-  const latest = storageGet('bs_appts', []);
-  const clash = latest.find(a => a.barberId === appt.barberId && a.date === appt.date && a.time === appt.time);
-  if (clash) {
-    toast('Ese horario ya fue tomado. Elegí otro.', 'error');
+    await addDoc(collection(db, 'appointments'), {
+      serviceId: state.booking.service,
+      barberId: state.booking.barber,
+      date: state.booking.date,
+      time: state.booking.time,
+      clientName: name,
+      clientPhone: phone,
+      createdAt: new Date().toISOString()
+    });
+
+    document.getElementById('successSummary').innerHTML = document.getElementById('summaryBox').innerHTML +
+      `<div class="summary-row"><span class="label-text">A nombre de</span><span class="value">${escapeHtml(name)}</span></div>`;
+
+    document.querySelectorAll('.step-panel').forEach(p => p.classList.remove('active'));
+    document.querySelector('[data-panel="5"]').classList.add('active');
+    document.querySelectorAll('.step-dot').forEach(d => d.classList.add('done'));
+    btn.innerHTML = 'Confirmar turno ✓';
+    toast('¡Turno confirmado!', 'success');
+  } catch (e) {
+    console.error(e);
+    toast('Error al guardar. Revisá tu conexión.', 'error');
     btn.disabled = false;
     btn.innerHTML = 'Confirmar turno ✓';
-    goStep(3);
-    return;
   }
-
-  latest.push(appt);
-  const ok = storageSet('bs_appts', latest);
-  if (!ok) {
-    toast('Error al guardar. Probá de nuevo.', 'error');
-    btn.disabled = false;
-    btn.innerHTML = 'Confirmar turno ✓';
-    return;
-  }
-  state.appointments = latest;
-
-  document.getElementById('successSummary').innerHTML = document.getElementById('summaryBox').innerHTML +
-    `<div class="summary-row"><span class="label-text">A nombre de</span><span class="value">${escapeHtml(name)}</span></div>`;
-
-  document.querySelectorAll('.step-panel').forEach(p => p.classList.remove('active'));
-  document.querySelector('[data-panel="5"]').classList.add('active');
-  document.querySelectorAll('.step-dot').forEach(d => d.classList.add('done'));
-  btn.innerHTML = 'Confirmar turno ✓';
-  toast('¡Turno confirmado!', 'success');
 }
 
 function resetBooking() {
@@ -963,6 +1002,17 @@ function toast(msg, type = '') {
 }
 function toggleNav() { document.getElementById('navLinks').classList.toggle('open'); }
 function closeNav() { document.getElementById('navLinks').classList.remove('open'); }
+
+// Expose to window for onclick handlers (needed with ES modules)
+window.selectService = selectService;
+window.selectBarber = selectBarber;
+window.selectTime = selectTime;
+window.goStep = goStep;
+window.renderTimeSlots = renderTimeSlots;
+window.confirmBooking = confirmBooking;
+window.resetBooking = resetBooking;
+window.toggleNav = toggleNav;
+window.closeNav = closeNav;
 
 init();
 </script>
