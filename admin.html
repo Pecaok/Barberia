@@ -1,0 +1,926 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Admin — El Clásico</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300..900;1,9..144,300..900&family=Manrope:wght@300..800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0f0e0c;
+    --bg-2: #181613;
+    --bg-3: #26221d;
+    --cream: #f4ece0;
+    --cream-dim: #cdc4b5;
+    --brass: #c9a25c;
+    --brass-dim: #8c6d3a;
+    --burgundy: #7a2a2a;
+    --line: #2e2820;
+    --danger: #c94c3e;
+    --ok: #7aa06b;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--bg);
+    color: var(--cream);
+    font-family: 'Manrope', sans-serif;
+    line-height: 1.5;
+    min-height: 100vh;
+  }
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 0;
+    opacity: 0.06;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+  }
+  h1, h2, h3, h4 { font-family: 'Fraunces', serif; font-weight: 500; letter-spacing: -0.02em; }
+  a { color: var(--brass); text-decoration: none; }
+  button { font-family: inherit; cursor: pointer; border: none; background: none; color: inherit; }
+  input, select {
+    font-family: inherit;
+    font-size: 0.95rem;
+    background: var(--bg-2);
+    color: var(--cream);
+    border: 1px solid var(--line);
+    padding: 0.75rem 1rem;
+    border-radius: 2px;
+    width: 100%;
+    transition: border-color .2s;
+  }
+  input:focus, select:focus { outline: none; border-color: var(--brass); }
+  label {
+    display: block;
+    font-size: 0.7rem;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--cream-dim);
+    margin-bottom: 0.4rem;
+    font-weight: 600;
+  }
+
+  header {
+    padding: 1.5rem 2.5rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid var(--line);
+    background: var(--bg-2);
+    position: relative;
+    z-index: 1;
+  }
+  .logo {
+    font-family: 'Fraunces', serif;
+    font-size: 1.4rem;
+    font-weight: 600;
+  }
+  .logo span { color: var(--brass); font-style: italic; }
+  .header-right { display: flex; gap: 1rem; align-items: center; }
+  .back-link {
+    font-size: 0.75rem;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--cream-dim);
+    padding: 0.5rem 1rem;
+    border: 1px solid var(--line);
+    border-radius: 2px;
+    transition: all .2s;
+  }
+  .back-link:hover { color: var(--cream); border-color: var(--brass-dim); }
+  .logout-btn {
+    font-size: 0.75rem;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--danger);
+    padding: 0.5rem 1rem;
+    border: 1px solid var(--line);
+    border-radius: 2px;
+    transition: all .2s;
+  }
+  .logout-btn:hover { border-color: var(--danger); background: rgba(201,76,62,0.1); }
+
+  main {
+    max-width: 1300px;
+    margin: 0 auto;
+    padding: 3rem 2.5rem;
+    position: relative;
+    z-index: 1;
+  }
+
+  .page-title {
+    font-size: 2.25rem;
+    margin-bottom: 0.5rem;
+  }
+  .page-title em { color: var(--brass); font-style: italic; }
+  .page-subtitle { color: var(--cream-dim); margin-bottom: 2.5rem; }
+
+  /* Login */
+  .login-wrap {
+    min-height: calc(100vh - 100px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem;
+  }
+  .login-box {
+    max-width: 420px;
+    width: 100%;
+    background: var(--bg-2);
+    border: 1px solid var(--line);
+    padding: 3rem 2.5rem;
+    position: relative;
+  }
+  .login-box::before, .login-box::after {
+    content: '';
+    position: absolute;
+    width: 20px; height: 20px;
+    border: 2px solid var(--brass);
+  }
+  .login-box::before { top: -1px; left: -1px; border-right: none; border-bottom: none; }
+  .login-box::after { bottom: -1px; right: -1px; border-left: none; border-top: none; }
+  .login-box h2 {
+    font-size: 1.75rem;
+    margin-bottom: 0.5rem;
+    text-align: center;
+  }
+  .login-box p.sub {
+    color: var(--cream-dim);
+    text-align: center;
+    margin-bottom: 2rem;
+    font-size: 0.9rem;
+  }
+  .login-box .hint {
+    color: var(--cream-dim);
+    font-size: 0.8rem;
+    text-align: center;
+    margin-top: 1.5rem;
+  }
+  .login-box .hint strong { color: var(--brass); }
+
+  /* Tabs */
+  .tabs {
+    display: flex;
+    gap: 0;
+    border-bottom: 1px solid var(--line);
+    margin-bottom: 2.5rem;
+    flex-wrap: wrap;
+    overflow-x: auto;
+  }
+  .tab {
+    padding: 1rem 1.5rem;
+    color: var(--cream-dim);
+    font-size: 0.75rem;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    font-weight: 700;
+    border-bottom: 2px solid transparent;
+    transition: all .2s;
+    white-space: nowrap;
+  }
+  .tab:hover { color: var(--cream); }
+  .tab.active { color: var(--brass); border-bottom-color: var(--brass); }
+
+  .panel { display: none; }
+  .panel.active { display: block; animation: fadeIn .25s; }
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  /* Stats */
+  .stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem;
+    margin-bottom: 2rem;
+  }
+  .stat-card {
+    background: var(--bg-2);
+    border: 1px solid var(--line);
+    padding: 1.5rem;
+  }
+  .stat-label {
+    font-size: 0.7rem;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--cream-dim);
+    margin-bottom: 0.5rem;
+  }
+  .stat-value {
+    font-family: 'Fraunces', serif;
+    font-size: 2.25rem;
+    color: var(--brass);
+  }
+
+  /* Tables */
+  .table-wrap { overflow-x: auto; }
+  .admin-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 2rem;
+    min-width: 600px;
+  }
+  .admin-table th {
+    text-align: left;
+    padding: 0.85rem 1rem;
+    font-size: 0.7rem;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--cream-dim);
+    border-bottom: 1px solid var(--line);
+    font-weight: 600;
+  }
+  .admin-table td {
+    padding: 1rem;
+    border-bottom: 1px solid var(--line);
+    font-size: 0.95rem;
+  }
+  .admin-table tr:hover td { background: var(--bg-2); }
+
+  .admin-actions { display: flex; gap: 0.5rem; }
+
+  /* Buttons */
+  .btn {
+    padding: 0.85rem 1.75rem;
+    font-size: 0.75rem;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    font-weight: 700;
+    border-radius: 2px;
+    transition: all .2s;
+    border: 1px solid var(--line);
+    display: inline-block;
+    white-space: nowrap;
+  }
+  .btn-primary { background: var(--brass); color: var(--bg); border-color: var(--brass); }
+  .btn-primary:hover { background: var(--cream); border-color: var(--cream); }
+  .btn-danger { color: var(--danger); border-color: var(--danger); }
+  .btn-danger:hover { background: var(--danger); color: var(--cream); }
+  .btn-secondary { color: var(--cream-dim); }
+  .btn-secondary:hover { color: var(--cream); border-color: var(--cream-dim); }
+
+  .icon-btn {
+    padding: 0.4rem 0.8rem;
+    font-size: 0.7rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    border: 1px solid var(--line);
+    transition: all .2s;
+    border-radius: 2px;
+  }
+  .icon-btn:hover { border-color: var(--brass); color: var(--brass); }
+  .icon-btn.del:hover { border-color: var(--danger); color: var(--danger); }
+
+  /* Add form */
+  .add-form {
+    background: var(--bg-2);
+    border: 1px solid var(--line);
+    padding: 1.75rem;
+    margin-bottom: 2rem;
+  }
+  .add-form h3 {
+    font-size: 1.1rem;
+    margin-bottom: 1.25rem;
+    color: var(--brass);
+  }
+  .add-form-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 1rem;
+    align-items: end;
+  }
+
+  /* Hours */
+  .hours-grid {
+    display: grid;
+    grid-template-columns: 140px 1fr 1fr 100px;
+    gap: 1rem;
+    align-items: center;
+    padding: 0.85rem 0;
+    border-bottom: 1px solid var(--line);
+  }
+  .hours-grid .day-name { font-family: 'Fraunces', serif; font-size: 1.1rem; }
+
+  /* Filters */
+  .filter-bar {
+    display: flex;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+    flex-wrap: wrap;
+    align-items: end;
+  }
+  .filter-bar > div { min-width: 180px; }
+
+  .badge {
+    display: inline-block;
+    padding: 0.2rem 0.6rem;
+    border-radius: 2px;
+    font-size: 0.7rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    font-weight: 700;
+  }
+  .badge-ok { background: rgba(122,160,107,0.2); color: var(--ok); }
+  .badge-brass { background: rgba(201,162,92,0.2); color: var(--brass); }
+  .badge-dim { background: var(--bg-3); color: var(--cream-dim); }
+
+  .empty-state {
+    text-align: center;
+    padding: 3rem 1rem;
+    color: var(--cream-dim);
+    font-style: italic;
+  }
+
+  .divider {
+    height: 1px;
+    background: var(--line);
+    margin: 2.5rem 0;
+  }
+
+  .danger-zone {
+    background: rgba(201,76,62,0.05);
+    border: 1px solid rgba(201,76,62,0.3);
+    padding: 1.5rem;
+    margin-top: 2rem;
+  }
+  .danger-zone h4 {
+    color: var(--danger);
+    margin-bottom: 0.5rem;
+    font-family: 'Fraunces', serif;
+    font-size: 1.1rem;
+  }
+  .danger-zone p {
+    color: var(--cream-dim);
+    font-size: 0.9rem;
+    margin-bottom: 1rem;
+  }
+
+  .toast {
+    position: fixed;
+    bottom: 2rem; right: 2rem;
+    background: var(--bg-3);
+    border-left: 3px solid var(--brass);
+    color: var(--cream);
+    padding: 1rem 1.5rem;
+    z-index: 2000;
+    transform: translateX(calc(100% + 3rem));
+    transition: transform .3s;
+    max-width: 340px;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+  }
+  .toast.show { transform: translateX(0); }
+  .toast.error { border-left-color: var(--danger); }
+  .toast.success { border-left-color: var(--ok); }
+
+  @media (max-width: 700px) {
+    header { padding: 1rem 1.25rem; }
+    main { padding: 2rem 1.25rem; }
+    .hours-grid { grid-template-columns: 100px 1fr 1fr; gap: 0.5rem; font-size: 0.85rem; }
+    .hours-grid .icon-btn { grid-column: 1/-1; justify-self: start; }
+    .page-title { font-size: 1.75rem; }
+    .logo { font-size: 1.1rem; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">El <span>Clásico</span> · Admin</div>
+  <div class="header-right">
+    <a href="index.html" class="back-link">← Ver sitio</a>
+    <button class="logout-btn" onclick="logout()" id="logoutBtn" style="display:none">Cerrar sesión</button>
+  </div>
+</header>
+
+<!-- LOGIN -->
+<div id="loginScreen" class="login-wrap">
+  <div class="login-box">
+    <h2>Panel de Administración</h2>
+    <p class="sub">Ingresá la contraseña para continuar</p>
+    <label>Contraseña</label>
+    <input type="password" id="loginPass" placeholder="••••••••" onkeypress="if(event.key==='Enter')tryLogin()" autofocus>
+    <button class="btn btn-primary" onclick="tryLogin()" style="width:100%;margin-top:1rem">Ingresar</button>
+    <p class="hint">Contraseña inicial: <strong>admin123</strong><br>Cambiala desde Configuración.</p>
+  </div>
+</div>
+
+<!-- DASHBOARD -->
+<main id="dashboard" style="display:none">
+  <h1 class="page-title">Panel de <em>Administración</em></h1>
+  <p class="page-subtitle">Gestioná turnos, barberos, servicios y horarios.</p>
+
+  <div class="tabs">
+    <button class="tab active" data-tab="appts" onclick="switchTab('appts')">Turnos</button>
+    <button class="tab" data-tab="barbers" onclick="switchTab('barbers')">Barberos</button>
+    <button class="tab" data-tab="services" onclick="switchTab('services')">Servicios</button>
+    <button class="tab" data-tab="hours" onclick="switchTab('hours')">Horarios</button>
+    <button class="tab" data-tab="settings" onclick="switchTab('settings')">Configuración</button>
+  </div>
+
+  <!-- Appointments -->
+  <div class="panel active" data-panel="appts">
+    <div class="stats-grid">
+      <div class="stat-card">
+        <div class="stat-label">Turnos pendientes</div>
+        <div class="stat-value" id="statPending">0</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Turnos hoy</div>
+        <div class="stat-value" id="statToday">0</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Total histórico</div>
+        <div class="stat-value" id="statTotal">0</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Ingresos del mes</div>
+        <div class="stat-value" id="statRevenue">$0</div>
+      </div>
+    </div>
+
+    <div class="filter-bar">
+      <div>
+        <label>Filtrar por barbero</label>
+        <select id="filterBarber" onchange="renderAppts()">
+          <option value="">Todos</option>
+        </select>
+      </div>
+      <div>
+        <label>Estado</label>
+        <select id="filterStatus" onchange="renderAppts()">
+          <option value="all">Todos</option>
+          <option value="future" selected>Pendientes</option>
+          <option value="past">Pasados</option>
+        </select>
+      </div>
+    </div>
+
+    <div id="apptsList"></div>
+  </div>
+
+  <!-- Barbers -->
+  <div class="panel" data-panel="barbers">
+    <div class="add-form">
+      <h3>Agregar barbero</h3>
+      <div class="add-form-grid">
+        <div>
+          <label>Nombre</label>
+          <input type="text" id="newBarberName" placeholder="Ej: Ricardo">
+        </div>
+        <div>
+          <label>Especialidad</label>
+          <input type="text" id="newBarberSpec" placeholder="Ej: Cortes clásicos">
+        </div>
+        <div>
+          <label>Bio corta</label>
+          <input type="text" id="newBarberBio" placeholder="Ej: 20 años de oficio">
+        </div>
+        <button class="btn btn-primary" onclick="addBarber()">+ Agregar</button>
+      </div>
+    </div>
+    <div class="table-wrap">
+      <table class="admin-table">
+        <thead><tr><th>Nombre</th><th>Especialidad</th><th>Bio</th><th></th></tr></thead>
+        <tbody id="barbersTable"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Services -->
+  <div class="panel" data-panel="services">
+    <div class="add-form">
+      <h3>Agregar servicio</h3>
+      <div class="add-form-grid">
+        <div>
+          <label>Nombre</label>
+          <input type="text" id="newServiceName" placeholder="Ej: Corte + Barba">
+        </div>
+        <div>
+          <label>Duración (min)</label>
+          <input type="number" id="newServiceDur" placeholder="45" min="15" step="15">
+        </div>
+        <div>
+          <label>Precio ($)</label>
+          <input type="number" id="newServicePrice" placeholder="15000" min="0">
+        </div>
+        <button class="btn btn-primary" onclick="addService()">+ Agregar</button>
+      </div>
+    </div>
+    <div class="table-wrap">
+      <table class="admin-table">
+        <thead><tr><th>Servicio</th><th>Duración</th><th>Precio</th><th></th></tr></thead>
+        <tbody id="servicesTable"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Hours -->
+  <div class="panel" data-panel="hours">
+    <h3 style="margin-bottom:1rem;font-family:Fraunces,serif;font-size:1.3rem">Horario de atención</h3>
+    <p style="color:var(--cream-dim);margin-bottom:1.5rem;font-size:0.9rem">Dejá vacío el horario de apertura para marcar el día como cerrado.</p>
+    <div id="hoursList"></div>
+    <button class="btn btn-primary" onclick="saveHours()" style="margin-top:1.5rem">Guardar horarios</button>
+  </div>
+
+  <!-- Settings -->
+  <div class="panel" data-panel="settings">
+    <h3 style="margin-bottom:1.5rem;font-family:Fraunces,serif;font-size:1.3rem">Configuración</h3>
+    <div style="max-width:500px">
+      <label>Cambiar contraseña de admin</label>
+      <input type="password" id="newAdminPass" placeholder="Nueva contraseña (mínimo 4 caracteres)">
+      <button class="btn btn-primary" onclick="changePassword()" style="margin-top:1rem">Actualizar contraseña</button>
+
+      <div class="danger-zone">
+        <h4>Zona peligrosa</h4>
+        <p>Esto borra todos los turnos reservados. No se puede deshacer.</p>
+        <button class="btn btn-danger" onclick="clearAppts()">Borrar todos los turnos</button>
+      </div>
+    </div>
+  </div>
+</main>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const DEFAULT_PASS = 'admin123';
+
+const state = {
+  services: [],
+  barbers: [],
+  hours: {},
+  appointments: [],
+  loggedIn: false
+};
+
+function storageGet(key, def) {
+  try {
+    const r = localStorage.getItem(key);
+    return r ? JSON.parse(r) : def;
+  } catch { return def; }
+}
+function storageSet(key, val) {
+  try {
+    localStorage.setItem(key, JSON.stringify(val));
+    return true;
+  } catch { return false; }
+}
+
+function init() {
+  state.services = storageGet('bs_services', []);
+  state.barbers = storageGet('bs_barbers', []);
+  state.hours = storageGet('bs_hours', {});
+  state.appointments = storageGet('bs_appts', []);
+
+  // Restore session
+  if (sessionStorage.getItem('bs_logged') === '1') {
+    showDashboard();
+  }
+}
+
+function tryLogin() {
+  const pass = document.getElementById('loginPass').value;
+  const stored = storageGet('bs_password', DEFAULT_PASS);
+  if (pass === stored) {
+    sessionStorage.setItem('bs_logged', '1');
+    showDashboard();
+  } else {
+    toast('Contraseña incorrecta', 'error');
+    document.getElementById('loginPass').value = '';
+  }
+}
+
+function logout() {
+  sessionStorage.removeItem('bs_logged');
+  state.loggedIn = false;
+  document.getElementById('dashboard').style.display = 'none';
+  document.getElementById('loginScreen').style.display = 'flex';
+  document.getElementById('logoutBtn').style.display = 'none';
+  document.getElementById('loginPass').value = '';
+}
+
+function showDashboard() {
+  state.loggedIn = true;
+  document.getElementById('loginScreen').style.display = 'none';
+  document.getElementById('dashboard').style.display = 'block';
+  document.getElementById('logoutBtn').style.display = 'inline-block';
+  // Refresh all data
+  state.services = storageGet('bs_services', []);
+  state.barbers = storageGet('bs_barbers', []);
+  state.hours = storageGet('bs_hours', {});
+  state.appointments = storageGet('bs_appts', []);
+  renderAll();
+}
+
+function renderAll() {
+  renderStats();
+  renderBarberFilter();
+  renderAppts();
+  renderBarbers();
+  renderServices();
+  renderHours();
+}
+
+function switchTab(tab) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.tab === tab));
+  document.querySelectorAll('.panel').forEach(p => p.classList.toggle('active', p.dataset.panel === tab));
+}
+
+// STATS
+function renderStats() {
+  const today = new Date().toISOString().split('T')[0];
+  const thisMonth = today.substring(0, 7);
+  const pending = state.appointments.filter(a => a.date >= today).length;
+  const todayCount = state.appointments.filter(a => a.date === today).length;
+  const total = state.appointments.length;
+  const revenue = state.appointments
+    .filter(a => a.date.startsWith(thisMonth))
+    .reduce((sum, a) => {
+      const s = state.services.find(x => x.id === a.serviceId);
+      return sum + (s ? s.price : 0);
+    }, 0);
+
+  document.getElementById('statPending').textContent = pending;
+  document.getElementById('statToday').textContent = todayCount;
+  document.getElementById('statTotal').textContent = total;
+  document.getElementById('statRevenue').textContent = '$' + formatPrice(revenue);
+}
+
+function renderBarberFilter() {
+  const el = document.getElementById('filterBarber');
+  const current = el.value;
+  el.innerHTML = '<option value="">Todos</option>' +
+    state.barbers.map(b => `<option value="${b.id}">${escapeHtml(b.name)}</option>`).join('');
+  el.value = current;
+}
+
+// APPOINTMENTS
+function renderAppts() {
+  const el = document.getElementById('apptsList');
+  const barberFilter = document.getElementById('filterBarber').value;
+  const statusFilter = document.getElementById('filterStatus').value;
+  const today = new Date().toISOString().split('T')[0];
+
+  let list = [...state.appointments];
+  if (barberFilter) list = list.filter(a => a.barberId === barberFilter);
+  if (statusFilter === 'future') list = list.filter(a => a.date >= today);
+  if (statusFilter === 'past') list = list.filter(a => a.date < today);
+
+  list.sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time));
+  if (statusFilter === 'past') list.reverse();
+
+  if (!list.length) {
+    el.innerHTML = '<div class="empty-state">No hay turnos que mostrar</div>';
+    return;
+  }
+
+  el.innerHTML = `
+    <div class="table-wrap">
+    <table class="admin-table">
+      <thead><tr><th>Fecha</th><th>Hora</th><th>Cliente</th><th>Teléfono</th><th>Servicio</th><th>Barbero</th><th>Precio</th><th>Estado</th><th></th></tr></thead>
+      <tbody>
+        ${list.map(a => {
+          const s = state.services.find(x => x.id === a.serviceId);
+          const b = state.barbers.find(x => x.id === a.barberId);
+          const isFuture = a.date >= today;
+          const isToday = a.date === today;
+          return `
+            <tr>
+              <td>${formatDate(a.date)}</td>
+              <td><strong>${a.time}</strong></td>
+              <td>${escapeHtml(a.clientName)}</td>
+              <td><a href="tel:${escapeHtml(a.clientPhone)}">${escapeHtml(a.clientPhone)}</a></td>
+              <td>${s ? escapeHtml(s.name) : '<span class="badge badge-dim">eliminado</span>'}</td>
+              <td>${b ? escapeHtml(b.name) : '<span class="badge badge-dim">eliminado</span>'}</td>
+              <td style="color:var(--brass)">$${s ? formatPrice(s.price) : '-'}</td>
+              <td>${
+                isToday ? '<span class="badge badge-ok">Hoy</span>' :
+                isFuture ? '<span class="badge badge-brass">Pendiente</span>' :
+                '<span class="badge badge-dim">Pasado</span>'
+              }</td>
+              <td><button class="icon-btn del" onclick="delAppt('${a.id}')">Borrar</button></td>
+            </tr>
+          `;
+        }).join('')}
+      </tbody>
+    </table>
+    </div>
+  `;
+}
+
+function delAppt(id) {
+  if (!confirm('¿Borrar este turno?')) return;
+  state.appointments = state.appointments.filter(a => a.id !== id);
+  storageSet('bs_appts', state.appointments);
+  renderStats();
+  renderAppts();
+  toast('Turno borrado', 'success');
+}
+
+function clearAppts() {
+  if (!confirm('¿Seguro que querés borrar TODOS los turnos? Esto no se puede deshacer.')) return;
+  state.appointments = [];
+  storageSet('bs_appts', []);
+  renderStats();
+  renderAppts();
+  toast('Todos los turnos borrados', 'success');
+}
+
+// BARBERS
+function renderBarbers() {
+  const el = document.getElementById('barbersTable');
+  if (!state.barbers.length) {
+    el.innerHTML = '<tr><td colspan="4"><div class="empty-state">Sin barberos. Agregá el primero.</div></td></tr>';
+    return;
+  }
+  el.innerHTML = state.barbers.map(b => `
+    <tr>
+      <td><strong>${escapeHtml(b.name)}</strong></td>
+      <td>${escapeHtml(b.specialty || '')}</td>
+      <td>${escapeHtml(b.bio || '')}</td>
+      <td><div class="admin-actions">
+        <button class="icon-btn" onclick="editBarber('${b.id}')">Editar</button>
+        <button class="icon-btn del" onclick="delBarber('${b.id}')">Borrar</button>
+      </div></td>
+    </tr>
+  `).join('');
+}
+
+function addBarber() {
+  const name = document.getElementById('newBarberName').value.trim();
+  const specialty = document.getElementById('newBarberSpec').value.trim();
+  const bio = document.getElementById('newBarberBio').value.trim();
+  if (!name) { toast('Ingresá al menos el nombre', 'error'); return; }
+  state.barbers.push({ id: 'b' + Date.now(), name, specialty, bio });
+  storageSet('bs_barbers', state.barbers);
+  document.getElementById('newBarberName').value = '';
+  document.getElementById('newBarberSpec').value = '';
+  document.getElementById('newBarberBio').value = '';
+  renderBarbers();
+  renderBarberFilter();
+  toast('Barbero agregado', 'success');
+}
+
+function editBarber(id) {
+  const b = state.barbers.find(x => x.id === id);
+  if (!b) return;
+  const name = prompt('Nombre:', b.name);
+  if (name === null) return;
+  const specialty = prompt('Especialidad:', b.specialty || '');
+  if (specialty === null) return;
+  const bio = prompt('Bio:', b.bio || '');
+  if (bio === null) return;
+  b.name = name.trim();
+  b.specialty = specialty.trim();
+  b.bio = bio.trim();
+  storageSet('bs_barbers', state.barbers);
+  renderBarbers();
+  renderBarberFilter();
+  toast('Barbero actualizado', 'success');
+}
+
+function delBarber(id) {
+  if (!confirm('¿Borrar este barbero? Los turnos existentes no se eliminan.')) return;
+  state.barbers = state.barbers.filter(b => b.id !== id);
+  storageSet('bs_barbers', state.barbers);
+  renderBarbers();
+  renderBarberFilter();
+  renderAppts();
+  toast('Barbero borrado', 'success');
+}
+
+// SERVICES
+function renderServices() {
+  const el = document.getElementById('servicesTable');
+  if (!state.services.length) {
+    el.innerHTML = '<tr><td colspan="4"><div class="empty-state">Sin servicios. Agregá el primero.</div></td></tr>';
+    return;
+  }
+  el.innerHTML = state.services.map(s => `
+    <tr>
+      <td><strong>${escapeHtml(s.name)}</strong></td>
+      <td>${s.duration} min</td>
+      <td style="color:var(--brass)">$${formatPrice(s.price)}</td>
+      <td><div class="admin-actions">
+        <button class="icon-btn" onclick="editService('${s.id}')">Editar</button>
+        <button class="icon-btn del" onclick="delService('${s.id}')">Borrar</button>
+      </div></td>
+    </tr>
+  `).join('');
+}
+
+function addService() {
+  const name = document.getElementById('newServiceName').value.trim();
+  const duration = parseInt(document.getElementById('newServiceDur').value);
+  const price = parseInt(document.getElementById('newServicePrice').value);
+  if (!name || !duration || isNaN(price) || price < 0) { toast('Completá todos los campos', 'error'); return; }
+  state.services.push({ id: 's' + Date.now(), name, duration, price });
+  storageSet('bs_services', state.services);
+  document.getElementById('newServiceName').value = '';
+  document.getElementById('newServiceDur').value = '';
+  document.getElementById('newServicePrice').value = '';
+  renderServices();
+  toast('Servicio agregado', 'success');
+}
+
+function editService(id) {
+  const s = state.services.find(x => x.id === id);
+  if (!s) return;
+  const name = prompt('Nombre:', s.name);
+  if (name === null) return;
+  const dur = prompt('Duración (min):', s.duration);
+  if (dur === null) return;
+  const price = prompt('Precio ($):', s.price);
+  if (price === null) return;
+  s.name = name.trim();
+  s.duration = parseInt(dur) || s.duration;
+  s.price = parseInt(price) || 0;
+  storageSet('bs_services', state.services);
+  renderServices();
+  renderAppts();
+  renderStats();
+  toast('Servicio actualizado', 'success');
+}
+
+function delService(id) {
+  if (!confirm('¿Borrar este servicio?')) return;
+  state.services = state.services.filter(s => s.id !== id);
+  storageSet('bs_services', state.services);
+  renderServices();
+  renderAppts();
+  toast('Servicio borrado', 'success');
+}
+
+// HOURS
+function renderHours() {
+  const el = document.getElementById('hoursList');
+  const order = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'];
+  const labels = { mon: 'Lunes', tue: 'Martes', wed: 'Miércoles', thu: 'Jueves', fri: 'Viernes', sat: 'Sábado', sun: 'Domingo' };
+  el.innerHTML = order.map(k => {
+    const h = state.hours[k] || { open: '', close: '' };
+    return `
+      <div class="hours-grid">
+        <div class="day-name">${labels[k]}</div>
+        <div>
+          <input type="time" id="h-${k}-open" value="${h.open || ''}" placeholder="Apertura">
+        </div>
+        <div>
+          <input type="time" id="h-${k}-close" value="${h.close || ''}" placeholder="Cierre">
+        </div>
+        <button class="icon-btn" onclick="clearDay('${k}')">Cerrar día</button>
+      </div>
+    `;
+  }).join('');
+}
+
+function clearDay(k) {
+  document.getElementById(`h-${k}-open`).value = '';
+  document.getElementById(`h-${k}-close`).value = '';
+}
+
+function saveHours() {
+  const order = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'];
+  const newHours = {};
+  for (const k of order) {
+    const open = document.getElementById(`h-${k}-open`).value;
+    const close = document.getElementById(`h-${k}-close`).value;
+    newHours[k] = { open, close };
+  }
+  state.hours = newHours;
+  storageSet('bs_hours', state.hours);
+  toast('Horarios guardados', 'success');
+}
+
+// PASSWORD
+function changePassword() {
+  const newPass = document.getElementById('newAdminPass').value;
+  if (!newPass || newPass.length < 4) { toast('La contraseña debe tener al menos 4 caracteres', 'error'); return; }
+  storageSet('bs_password', newPass);
+  document.getElementById('newAdminPass').value = '';
+  toast('Contraseña actualizada', 'success');
+}
+
+// UTILS
+function escapeHtml(s) {
+  if (!s) return '';
+  return String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
+}
+function formatPrice(n) { return Number(n).toLocaleString('es-AR'); }
+function formatDate(d) {
+  const date = new Date(d + 'T00:00:00');
+  return date.toLocaleDateString('es-AR', { weekday: 'short', day: '2-digit', month: '2-digit' });
+}
+function toast(msg, type = '') {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.className = 'toast show ' + type;
+  setTimeout(() => el.classList.remove('show'), 3000);
+}
+
+init();
+</script>
+</body>
+</html>
