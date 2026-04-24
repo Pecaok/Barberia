@@ -327,6 +327,152 @@
   .badge-ok { background: rgba(122,160,107,0.2); color: var(--ok); }
   .badge-brass { background: rgba(201,162,92,0.2); color: var(--brass); }
   .badge-dim { background: var(--bg-3); color: var(--cream-dim); }
+  .badge-danger { background: rgba(201,76,62,0.2); color: var(--danger); }
+  .badge-purple { background: rgba(155,110,180,0.2); color: #c89ddc; }
+
+  .clickable-row { cursor: pointer; }
+  .clickable-row:hover td { background: var(--bg-2); }
+
+  .modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.8);
+    backdrop-filter: blur(6px);
+    z-index: 1500;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 1.5rem;
+  }
+  .modal-overlay.open { display: flex; }
+  .modal {
+    background: var(--bg);
+    border: 1px solid var(--brass-dim);
+    max-width: 560px;
+    width: 100%;
+    max-height: 90vh;
+    overflow-y: auto;
+    padding: 2.25rem;
+    position: relative;
+  }
+  .modal::before, .modal::after {
+    content: '';
+    position: absolute;
+    width: 18px; height: 18px;
+    border: 2px solid var(--brass);
+  }
+  .modal::before { top: -1px; left: -1px; border-right: none; border-bottom: none; }
+  .modal::after { bottom: -1px; right: -1px; border-left: none; border-top: none; }
+  .modal-close {
+    position: absolute;
+    top: 0.75rem; right: 1.25rem;
+    font-size: 1.75rem;
+    color: var(--cream-dim);
+    cursor: pointer;
+    transition: color .2s;
+  }
+  .modal-close:hover { color: var(--brass); }
+  .modal h3 {
+    font-family: 'Fraunces', serif;
+    font-size: 1.75rem;
+    margin-bottom: 0.25rem;
+  }
+  .modal .modal-subtitle {
+    color: var(--cream-dim);
+    font-size: 0.9rem;
+    margin-bottom: 1.5rem;
+  }
+
+  .detail-section {
+    padding: 1rem 0;
+    border-bottom: 1px solid var(--line);
+  }
+  .detail-section:last-of-type { border-bottom: none; }
+  .detail-section h4 {
+    font-size: 0.7rem;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--brass);
+    margin-bottom: 0.75rem;
+    font-family: 'Manrope', sans-serif;
+    font-weight: 700;
+  }
+  .detail-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 0.35rem 0;
+    gap: 1rem;
+  }
+  .detail-row .k {
+    color: var(--cream-dim);
+    font-size: 0.9rem;
+  }
+  .detail-row .v {
+    font-family: 'Fraunces', serif;
+    font-size: 1rem;
+    text-align: right;
+  }
+  .detail-row .v.brass { color: var(--brass); font-weight: 500; }
+  .detail-row .v.strike { text-decoration: line-through; color: var(--cream-dim); font-size: 0.9rem; }
+  .detail-row .v.discount { color: var(--ok); }
+
+  .pay-methods {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.5rem;
+    margin-top: 0.75rem;
+  }
+  .pay-method {
+    padding: 0.85rem;
+    border: 1px solid var(--line);
+    background: var(--bg-2);
+    cursor: pointer;
+    transition: all .2s;
+    text-align: center;
+    font-size: 0.85rem;
+    border-radius: 2px;
+    color: var(--cream);
+  }
+  .pay-method:hover { border-color: var(--brass-dim); color: var(--brass); }
+  .pay-method.selected {
+    border-color: var(--brass);
+    background: var(--bg-3);
+    color: var(--brass);
+    font-weight: 600;
+  }
+
+  .discount-row {
+    display: grid;
+    grid-template-columns: 1fr 110px;
+    gap: 0.5rem;
+    margin-top: 0.75rem;
+  }
+  .discount-row input, .discount-row select {
+    font-size: 0.9rem;
+    padding: 0.65rem 0.75rem;
+  }
+
+  .modal-actions {
+    display: flex;
+    gap: 0.5rem;
+    margin-top: 1.5rem;
+    flex-wrap: wrap;
+  }
+  .modal-actions .btn { flex: 1; min-width: 140px; }
+
+  .total-box {
+    background: var(--bg-2);
+    border: 1px solid var(--brass-dim);
+    padding: 1rem 1.25rem;
+    margin-top: 0.75rem;
+  }
+  .total-box .detail-row .v { font-size: 1.05rem; }
+  .total-box .total-final { padding-top: 0.75rem; border-top: 1px dashed var(--line); margin-top: 0.25rem; }
+  .total-box .total-final .v {
+    font-size: 1.5rem;
+    color: var(--brass);
+    font-weight: 500;
+  }
 
   .empty-state {
     text-align: center;
@@ -433,11 +579,11 @@
         <div class="stat-value" id="statToday">0</div>
       </div>
       <div class="stat-card">
-        <div class="stat-label">Total histórico</div>
-        <div class="stat-value" id="statTotal">0</div>
+        <div class="stat-label">Cobrado hoy</div>
+        <div class="stat-value" id="statTodayRevenue">$0</div>
       </div>
       <div class="stat-card">
-        <div class="stat-label">Ingresos del mes</div>
+        <div class="stat-label">Cobrado del mes</div>
         <div class="stat-value" id="statRevenue">$0</div>
       </div>
     </div>
@@ -452,15 +598,19 @@
       <div>
         <label>Estado</label>
         <select id="filterStatus" onchange="renderAppts()">
+          <option value="active" selected>Activos (no finalizados)</option>
+          <option value="pending">Pendientes de pago</option>
+          <option value="paid">Pagados (no finalizados)</option>
+          <option value="finalized">Finalizados</option>
           <option value="all">Todos</option>
-          <option value="future" selected>Pendientes</option>
-          <option value="past">Pasados</option>
         </select>
       </div>
     </div>
 
+    <p style="color:var(--cream-dim);font-size:0.85rem;margin-bottom:1rem">💡 Click en un turno para gestionar pago, descuento y finalización.</p>
     <div id="apptsList"></div>
   </div>
+
 
   <!-- Barbers -->
   <div class="panel" data-panel="barbers">
@@ -542,6 +692,14 @@
     </div>
   </div>
 </main>
+
+<!-- Appointment Detail Modal -->
+<div class="modal-overlay" id="apptModal">
+  <div class="modal">
+    <span class="modal-close" onclick="closeApptModal()">×</span>
+    <div id="apptModalBody"></div>
+  </div>
+</div>
 
 <div class="toast" id="toast"></div>
 
@@ -650,23 +808,38 @@ function switchTab(tab) {
   document.querySelectorAll('.panel').forEach(p => p.classList.toggle('active', p.dataset.panel === tab));
 }
 
+// Calcula el precio final de un turno considerando descuento
+function getApptPricing(a) {
+  const s = state.services.find(x => x.id === a.serviceId);
+  const base = s ? s.price : 0;
+  let discount = 0;
+  if (a.discountType === 'percent' && a.discountValue) {
+    discount = Math.round(base * (a.discountValue / 100));
+  } else if (a.discountType === 'amount' && a.discountValue) {
+    discount = a.discountValue;
+  }
+  const total = Math.max(0, base - discount);
+  return { base, discount, total, service: s };
+}
+
 function renderStats() {
   const today = new Date().toISOString().split('T')[0];
   const thisMonth = today.substring(0, 7);
-  const pending = state.appointments.filter(a => a.date >= today).length;
+  const pending = state.appointments.filter(a => a.date >= today && !a.finalized).length;
   const todayCount = state.appointments.filter(a => a.date === today).length;
-  const total = state.appointments.length;
-  const revenue = state.appointments
-    .filter(a => a.date.startsWith(thisMonth))
-    .reduce((sum, a) => {
-      const s = state.services.find(x => x.id === a.serviceId);
-      return sum + (s ? s.price : 0);
-    }, 0);
+
+  const todayRevenue = state.appointments
+    .filter(a => a.date === today && a.paid)
+    .reduce((sum, a) => sum + getApptPricing(a).total, 0);
+
+  const monthRevenue = state.appointments
+    .filter(a => a.date.startsWith(thisMonth) && a.paid)
+    .reduce((sum, a) => sum + getApptPricing(a).total, 0);
 
   document.getElementById('statPending').textContent = pending;
   document.getElementById('statToday').textContent = todayCount;
-  document.getElementById('statTotal').textContent = total;
-  document.getElementById('statRevenue').textContent = '$' + formatPrice(revenue);
+  document.getElementById('statTodayRevenue').textContent = '$' + formatPrice(todayRevenue);
+  document.getElementById('statRevenue').textContent = '$' + formatPrice(monthRevenue);
 }
 
 function renderBarberFilter() {
@@ -677,21 +850,33 @@ function renderBarberFilter() {
   el.value = current;
 }
 
+function statusBadge(a) {
+  if (a.finalized) return '<span class="badge badge-dim">✓ Finalizado</span>';
+  if (a.paid) return '<span class="badge badge-purple">$ Pagado</span>';
+  const today = new Date().toISOString().split('T')[0];
+  if (a.date === today) return '<span class="badge badge-ok">Hoy</span>';
+  if (a.date < today) return '<span class="badge badge-danger">Sin cobrar</span>';
+  return '<span class="badge badge-brass">Pendiente</span>';
+}
+
 function renderAppts() {
   const el = document.getElementById('apptsList');
   const bf = document.getElementById('filterBarber');
   const sf = document.getElementById('filterStatus');
   const barberFilter = bf ? bf.value : '';
-  const statusFilter = sf ? sf.value : 'future';
+  const statusFilter = sf ? sf.value : 'active';
   const today = new Date().toISOString().split('T')[0];
 
   let list = [...state.appointments];
   if (barberFilter) list = list.filter(a => a.barberId === barberFilter);
-  if (statusFilter === 'future') list = list.filter(a => a.date >= today);
-  if (statusFilter === 'past') list = list.filter(a => a.date < today);
+
+  if (statusFilter === 'active') list = list.filter(a => !a.finalized);
+  else if (statusFilter === 'pending') list = list.filter(a => !a.paid && !a.finalized);
+  else if (statusFilter === 'paid') list = list.filter(a => a.paid && !a.finalized);
+  else if (statusFilter === 'finalized') list = list.filter(a => a.finalized);
 
   list.sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time));
-  if (statusFilter === 'past') list.reverse();
+  if (statusFilter === 'finalized') list.reverse();
 
   if (!list.length) {
     el.innerHTML = '<div class="empty-state">No hay turnos que mostrar</div>';
@@ -701,28 +886,24 @@ function renderAppts() {
   el.innerHTML = `
     <div class="table-wrap">
     <table class="admin-table">
-      <thead><tr><th>Fecha</th><th>Hora</th><th>Cliente</th><th>Teléfono</th><th>Servicio</th><th>Barbero</th><th>Precio</th><th>Estado</th><th></th></tr></thead>
+      <thead><tr><th>Fecha</th><th>Hora</th><th>Cliente</th><th>Teléfono</th><th>Servicio</th><th>Barbero</th><th>Total</th><th>Estado</th></tr></thead>
       <tbody>
         ${list.map(a => {
-          const s = state.services.find(x => x.id === a.serviceId);
+          const { base, discount, total, service } = getApptPricing(a);
           const b = state.barbers.find(x => x.id === a.barberId);
-          const isFuture = a.date >= today;
-          const isToday = a.date === today;
+          const priceCell = discount > 0
+            ? `<span style="color:var(--brass)">$${formatPrice(total)}</span> <span style="color:var(--cream-dim);font-size:0.75rem;text-decoration:line-through">$${formatPrice(base)}</span>`
+            : `<span style="color:var(--brass)">$${service ? formatPrice(base) : '-'}</span>`;
           return `
-            <tr>
+            <tr class="clickable-row" onclick="openApptModal('${a.id}')">
               <td>${formatDate(a.date)}</td>
               <td><strong>${a.time}</strong></td>
               <td>${escapeHtml(a.clientName)}</td>
-              <td><a href="tel:${escapeHtml(a.clientPhone)}">${escapeHtml(a.clientPhone)}</a></td>
-              <td>${s ? escapeHtml(s.name) : '<span class="badge badge-dim">eliminado</span>'}</td>
+              <td onclick="event.stopPropagation()"><a href="tel:${escapeHtml(a.clientPhone)}">${escapeHtml(a.clientPhone)}</a></td>
+              <td>${service ? escapeHtml(service.name) : '<span class="badge badge-dim">eliminado</span>'}</td>
               <td>${b ? escapeHtml(b.name) : '<span class="badge badge-dim">eliminado</span>'}</td>
-              <td style="color:var(--brass)">$${s ? formatPrice(s.price) : '-'}</td>
-              <td>${
-                isToday ? '<span class="badge badge-ok">Hoy</span>' :
-                isFuture ? '<span class="badge badge-brass">Pendiente</span>' :
-                '<span class="badge badge-dim">Pasado</span>'
-              }</td>
-              <td><button class="icon-btn del" onclick="delAppt('${a.id}')">Borrar</button></td>
+              <td>${priceCell}</td>
+              <td>${statusBadge(a)}</td>
             </tr>
           `;
         }).join('')}
@@ -730,6 +911,207 @@ function renderAppts() {
     </table>
     </div>
   `;
+}
+
+// ========== APPOINTMENT DETAIL MODAL ==========
+let currentApptId = null;
+let pendingDiscount = { type: 'percent', value: 0 };
+let pendingPaymentMethod = null;
+
+function openApptModal(id) {
+  const a = state.appointments.find(x => x.id === id);
+  if (!a) return;
+  currentApptId = id;
+  pendingDiscount = {
+    type: a.discountType || 'percent',
+    value: a.discountValue || 0
+  };
+  pendingPaymentMethod = a.paymentMethod || null;
+  renderApptModal();
+  document.getElementById('apptModal').classList.add('open');
+}
+
+function closeApptModal() {
+  document.getElementById('apptModal').classList.remove('open');
+  currentApptId = null;
+}
+
+function renderApptModal() {
+  const a = state.appointments.find(x => x.id === currentApptId);
+  if (!a) { closeApptModal(); return; }
+  const { base, discount, total, service } = getApptPricing({
+    ...a,
+    discountType: pendingDiscount.type,
+    discountValue: pendingDiscount.value
+  });
+  const barber = state.barbers.find(x => x.id === a.barberId);
+
+  const methods = [
+    { id: 'cash', label: 'Efectivo' },
+    { id: 'debit', label: 'Débito' },
+    { id: 'credit', label: 'Crédito' },
+    { id: 'transfer', label: 'Transferencia' },
+    { id: 'mp', label: 'MercadoPago' },
+    { id: 'other', label: 'Otro' }
+  ];
+
+  document.getElementById('apptModalBody').innerHTML = `
+    <h3>Turno · ${escapeHtml(a.clientName)}</h3>
+    <p class="modal-subtitle">${formatDateLong(a.date)} · ${a.time} hs · ${statusBadge(a)}</p>
+
+    <div class="detail-section">
+      <h4>Información</h4>
+      <div class="detail-row"><span class="k">Cliente</span><span class="v">${escapeHtml(a.clientName)}</span></div>
+      <div class="detail-row"><span class="k">Teléfono</span><span class="v"><a href="tel:${escapeHtml(a.clientPhone)}" style="color:var(--brass)">${escapeHtml(a.clientPhone)}</a></span></div>
+      <div class="detail-row"><span class="k">Servicio</span><span class="v">${service ? escapeHtml(service.name) : '(eliminado)'}</span></div>
+      <div class="detail-row"><span class="k">Barbero</span><span class="v">${barber ? escapeHtml(barber.name) : '(eliminado)'}</span></div>
+    </div>
+
+    <div class="detail-section">
+      <h4>Descuento</h4>
+      <p style="color:var(--cream-dim);font-size:0.85rem;margin-bottom:0.5rem">Aplicá un descuento si querés. Poné 0 para quitarlo.</p>
+      <div class="discount-row">
+        <input type="number" id="discountInput" min="0" value="${pendingDiscount.value || ''}" placeholder="0" ${a.finalized ? 'disabled' : ''} oninput="updateDiscount()">
+        <select id="discountType" ${a.finalized ? 'disabled' : ''} onchange="updateDiscount()">
+          <option value="percent" ${pendingDiscount.type === 'percent' ? 'selected' : ''}>% porcentaje</option>
+          <option value="amount" ${pendingDiscount.type === 'amount' ? 'selected' : ''}>$ monto fijo</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="total-box">
+      <div class="detail-row"><span class="k">Precio del servicio</span><span class="v">$${formatPrice(base)}</span></div>
+      ${discount > 0 ? `<div class="detail-row"><span class="k">Descuento</span><span class="v discount">− $${formatPrice(discount)}</span></div>` : ''}
+      <div class="detail-row total-final"><span class="k">Total a cobrar</span><span class="v">$${formatPrice(total)}</span></div>
+    </div>
+
+    <div class="detail-section">
+      <h4>${a.paid ? 'Método de pago' : 'Cobrar turno'}</h4>
+      ${a.paid
+        ? `<div class="detail-row"><span class="k">Pagado con</span><span class="v brass">${getMethodLabel(a.paymentMethod)}</span></div>
+           ${a.paidAt ? `<div class="detail-row"><span class="k">Fecha de cobro</span><span class="v">${formatDateTime(a.paidAt)}</span></div>` : ''}`
+        : `<p style="color:var(--cream-dim);font-size:0.85rem;margin-bottom:0.25rem">Seleccioná el método de pago:</p>
+           <div class="pay-methods">
+             ${methods.map(m => `
+               <div class="pay-method ${pendingPaymentMethod === m.id ? 'selected' : ''}"
+                    onclick="selectPaymentMethod('${m.id}')">${m.label}</div>
+             `).join('')}
+           </div>`
+      }
+    </div>
+
+    ${a.finalized ? `
+      <div class="detail-section">
+        <h4>Finalización</h4>
+        <div class="detail-row"><span class="k">Finalizado el</span><span class="v">${formatDateTime(a.finalizedAt)}</span></div>
+      </div>
+    ` : ''}
+
+    <div class="modal-actions">
+      ${!a.paid ? `<button class="btn btn-primary" onclick="markPaid()">$ Marcar como pagado</button>` : ''}
+      ${a.paid && !a.finalized ? `<button class="btn btn-primary" onclick="markFinalized()">✓ Finalizar servicio</button>` : ''}
+      ${!a.paid ? `<button class="btn btn-secondary" onclick="saveDiscountOnly()">Guardar descuento</button>` : ''}
+      ${a.paid && !a.finalized ? `<button class="btn btn-secondary" onclick="unmarkPaid()">Revertir pago</button>` : ''}
+      <button class="btn btn-danger" onclick="delApptFromModal()">Borrar turno</button>
+    </div>
+  `;
+}
+
+function updateDiscount() {
+  const v = parseFloat(document.getElementById('discountInput').value) || 0;
+  const t = document.getElementById('discountType').value;
+  pendingDiscount = { type: t, value: v };
+  // Re-render solo el total sin cerrar el modal
+  const a = state.appointments.find(x => x.id === currentApptId);
+  if (!a) return;
+  const { base, discount, total } = getApptPricing({ ...a, discountType: t, discountValue: v });
+  const box = document.querySelector('.total-box');
+  if (!box) return;
+  box.innerHTML = `
+    <div class="detail-row"><span class="k">Precio del servicio</span><span class="v">$${formatPrice(base)}</span></div>
+    ${discount > 0 ? `<div class="detail-row"><span class="k">Descuento</span><span class="v discount">− $${formatPrice(discount)}</span></div>` : ''}
+    <div class="detail-row total-final"><span class="k">Total a cobrar</span><span class="v">$${formatPrice(total)}</span></div>
+  `;
+}
+
+function selectPaymentMethod(id) {
+  pendingPaymentMethod = id;
+  document.querySelectorAll('.pay-method').forEach(el => {
+    el.classList.toggle('selected', el.textContent.trim() === getMethodLabel(id));
+  });
+}
+
+function getMethodLabel(id) {
+  const map = { cash: 'Efectivo', debit: 'Débito', credit: 'Crédito', transfer: 'Transferencia', mp: 'MercadoPago', other: 'Otro' };
+  return map[id] || '—';
+}
+
+async function saveDiscountOnly() {
+  if (!currentApptId) return;
+  try {
+    await updateDoc(doc(db, 'appointments', currentApptId), {
+      discountType: pendingDiscount.type,
+      discountValue: pendingDiscount.value
+    });
+    toast('Descuento guardado', 'success');
+    setTimeout(() => renderApptModal(), 100);
+  } catch (e) { console.error(e); toast('Error al guardar', 'error'); }
+}
+
+async function markPaid() {
+  if (!currentApptId) return;
+  if (!pendingPaymentMethod) {
+    toast('Seleccioná un método de pago', 'error');
+    return;
+  }
+  try {
+    await updateDoc(doc(db, 'appointments', currentApptId), {
+      paid: true,
+      paymentMethod: pendingPaymentMethod,
+      paidAt: new Date().toISOString(),
+      discountType: pendingDiscount.type,
+      discountValue: pendingDiscount.value
+    });
+    toast('Turno marcado como pagado', 'success');
+    setTimeout(() => renderApptModal(), 100);
+  } catch (e) { console.error(e); toast('Error al cobrar', 'error'); }
+}
+
+async function unmarkPaid() {
+  if (!currentApptId) return;
+  if (!confirm('¿Revertir el pago de este turno?')) return;
+  try {
+    await updateDoc(doc(db, 'appointments', currentApptId), {
+      paid: false,
+      paymentMethod: null,
+      paidAt: null
+    });
+    toast('Pago revertido', 'success');
+    setTimeout(() => renderApptModal(), 100);
+  } catch (e) { console.error(e); toast('Error', 'error'); }
+}
+
+async function markFinalized() {
+  if (!currentApptId) return;
+  if (!confirm('¿Marcar el servicio como finalizado? Esto indica que el cliente fue atendido.')) return;
+  try {
+    await updateDoc(doc(db, 'appointments', currentApptId), {
+      finalized: true,
+      finalizedAt: new Date().toISOString()
+    });
+    toast('Servicio finalizado', 'success');
+    setTimeout(() => renderApptModal(), 100);
+  } catch (e) { console.error(e); toast('Error', 'error'); }
+}
+
+async function delApptFromModal() {
+  if (!currentApptId) return;
+  if (!confirm('¿Borrar este turno definitivamente?')) return;
+  try {
+    await deleteDoc(doc(db, 'appointments', currentApptId));
+    toast('Turno borrado', 'success');
+    closeApptModal();
+  } catch (e) { console.error(e); toast('Error al borrar', 'error'); }
 }
 
 async function delAppt(id) {
@@ -924,12 +1306,28 @@ function formatDate(d) {
   const date = new Date(d + 'T00:00:00');
   return date.toLocaleDateString('es-AR', { weekday: 'short', day: '2-digit', month: '2-digit' });
 }
+function formatDateLong(d) {
+  const date = new Date(d + 'T00:00:00');
+  const s = date.toLocaleDateString('es-AR', { weekday: 'long', day: 'numeric', month: 'long' });
+  return s.charAt(0).toUpperCase() + s.slice(1);
+}
+function formatDateTime(iso) {
+  if (!iso) return '';
+  const d = new Date(iso);
+  return d.toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: '2-digit' }) + ' ' +
+         d.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' });
+}
 function toast(msg, type = '') {
   const el = document.getElementById('toast');
   el.textContent = msg;
   el.className = 'toast show ' + type;
   setTimeout(() => el.classList.remove('show'), 3000);
 }
+
+// Close modal on overlay click
+document.getElementById('apptModal').addEventListener('click', e => {
+  if (e.target.id === 'apptModal') closeApptModal();
+});
 
 window.tryLogin = tryLogin;
 window.logout = logout;
@@ -946,6 +1344,16 @@ window.delService = delService;
 window.clearDay = clearDay;
 window.saveHours = saveHours;
 window.changePassword = changePassword;
+// Appointment modal
+window.openApptModal = openApptModal;
+window.closeApptModal = closeApptModal;
+window.updateDiscount = updateDiscount;
+window.selectPaymentMethod = selectPaymentMethod;
+window.saveDiscountOnly = saveDiscountOnly;
+window.markPaid = markPaid;
+window.unmarkPaid = unmarkPaid;
+window.markFinalized = markFinalized;
+window.delApptFromModal = delApptFromModal;
 
 init();
 </script>
