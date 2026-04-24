@@ -545,7 +545,23 @@
 
 <div class="toast" id="toast"></div>
 
-<script>
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.1/firebase-app.js";
+import { getFirestore, collection, doc, getDoc, setDoc, updateDoc, deleteDoc, addDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.13.1/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyAy8bKPcF7EA0BsLFMerbzzFOr-sDhRin4",
+  authDomain: "fir-f0e7f.firebaseapp.com",
+  projectId: "fir-f0e7f",
+  storageBucket: "fir-f0e7f.firebasestorage.app",
+  messagingSenderId: "436473060198",
+  appId: "1:436473060198:web:ea9e7c208758cee29a86a7",
+  measurementId: "G-TY1QWHR65P"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+
 const DEFAULT_PASS = 'admin123';
 
 const state = {
@@ -556,72 +572,77 @@ const state = {
   loggedIn: false
 };
 
-function storageGet(key, def) {
-  try {
-    const r = localStorage.getItem(key);
-    return r ? JSON.parse(r) : def;
-  } catch { return def; }
-}
-function storageSet(key, val) {
-  try {
-    localStorage.setItem(key, JSON.stringify(val));
-    return true;
-  } catch { return false; }
-}
+let unsubs = [];
 
 function init() {
-  state.services = storageGet('bs_services', []);
-  state.barbers = storageGet('bs_barbers', []);
-  state.hours = storageGet('bs_hours', {});
-  state.appointments = storageGet('bs_appts', []);
-
-  // Restore session
   if (sessionStorage.getItem('bs_logged') === '1') {
     showDashboard();
   }
 }
 
-function tryLogin() {
+async function tryLogin() {
   const pass = document.getElementById('loginPass').value;
-  const stored = storageGet('bs_password', DEFAULT_PASS);
-  if (pass === stored) {
-    sessionStorage.setItem('bs_logged', '1');
-    showDashboard();
-  } else {
-    toast('Contraseña incorrecta', 'error');
-    document.getElementById('loginPass').value = '';
+  try {
+    const snap = await getDoc(doc(db, 'config', 'auth'));
+    const stored = snap.exists() ? snap.data().password : DEFAULT_PASS;
+    if (pass === stored) {
+      sessionStorage.setItem('bs_logged', '1');
+      showDashboard();
+    } else {
+      toast('Contraseña incorrecta', 'error');
+      document.getElementById('loginPass').value = '';
+    }
+  } catch (e) {
+    console.error(e);
+    toast('Error al conectar. Revisá tus reglas de Firestore.', 'error');
   }
 }
 
 function logout() {
   sessionStorage.removeItem('bs_logged');
   state.loggedIn = false;
+  unsubs.forEach(u => { try { u(); } catch {} });
+  unsubs = [];
   document.getElementById('dashboard').style.display = 'none';
   document.getElementById('loginScreen').style.display = 'flex';
   document.getElementById('logoutBtn').style.display = 'none';
   document.getElementById('loginPass').value = '';
 }
 
-function showDashboard() {
+async function showDashboard() {
   state.loggedIn = true;
   document.getElementById('loginScreen').style.display = 'none';
   document.getElementById('dashboard').style.display = 'block';
   document.getElementById('logoutBtn').style.display = 'inline-block';
-  // Refresh all data
-  state.services = storageGet('bs_services', []);
-  state.barbers = storageGet('bs_barbers', []);
-  state.hours = storageGet('bs_hours', {});
-  state.appointments = storageGet('bs_appts', []);
-  renderAll();
-}
 
-function renderAll() {
-  renderStats();
-  renderBarberFilter();
-  renderAppts();
-  renderBarbers();
-  renderServices();
-  renderHours();
+  try {
+    const hSnap = await getDoc(doc(db, 'config', 'hours'));
+    state.hours = hSnap.exists() ? hSnap.data() : {};
+    renderHours();
+  } catch (e) {
+    console.error(e);
+    toast('Error al cargar horarios', 'error');
+  }
+
+  unsubs.push(onSnapshot(collection(db, 'services'), snap => {
+    state.services = snap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a,b) => a.id.localeCompare(b.id));
+    renderServices();
+    renderAppts();
+    renderStats();
+  }, err => { console.error(err); toast('Error de conexión', 'error'); }));
+
+  unsubs.push(onSnapshot(collection(db, 'barbers'), snap => {
+    state.barbers = snap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a,b) => a.id.localeCompare(b.id));
+    renderBarbers();
+    renderBarberFilter();
+    renderAppts();
+  }, err => console.error(err)));
+
+  unsubs.push(onSnapshot(collection(db, 'appointments'), snap => {
+    state.appointments = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    renderStats();
+    renderAppts();
+  }, err => console.error(err)));
 }
 
 function switchTab(tab) {
@@ -629,7 +650,6 @@ function switchTab(tab) {
   document.querySelectorAll('.panel').forEach(p => p.classList.toggle('active', p.dataset.panel === tab));
 }
 
-// STATS
 function renderStats() {
   const today = new Date().toISOString().split('T')[0];
   const thisMonth = today.substring(0, 7);
@@ -657,11 +677,12 @@ function renderBarberFilter() {
   el.value = current;
 }
 
-// APPOINTMENTS
 function renderAppts() {
   const el = document.getElementById('apptsList');
-  const barberFilter = document.getElementById('filterBarber').value;
-  const statusFilter = document.getElementById('filterStatus').value;
+  const bf = document.getElementById('filterBarber');
+  const sf = document.getElementById('filterStatus');
+  const barberFilter = bf ? bf.value : '';
+  const statusFilter = sf ? sf.value : 'future';
   const today = new Date().toISOString().split('T')[0];
 
   let list = [...state.appointments];
@@ -711,25 +732,22 @@ function renderAppts() {
   `;
 }
 
-function delAppt(id) {
+async function delAppt(id) {
   if (!confirm('¿Borrar este turno?')) return;
-  state.appointments = state.appointments.filter(a => a.id !== id);
-  storageSet('bs_appts', state.appointments);
-  renderStats();
-  renderAppts();
-  toast('Turno borrado', 'success');
+  try {
+    await deleteDoc(doc(db, 'appointments', id));
+    toast('Turno borrado', 'success');
+  } catch (e) { console.error(e); toast('Error al borrar', 'error'); }
 }
 
-function clearAppts() {
+async function clearAppts() {
   if (!confirm('¿Seguro que querés borrar TODOS los turnos? Esto no se puede deshacer.')) return;
-  state.appointments = [];
-  storageSet('bs_appts', []);
-  renderStats();
-  renderAppts();
-  toast('Todos los turnos borrados', 'success');
+  try {
+    await Promise.all(state.appointments.map(a => deleteDoc(doc(db, 'appointments', a.id))));
+    toast('Todos los turnos borrados', 'success');
+  } catch (e) { console.error(e); toast('Error al borrar', 'error'); }
 }
 
-// BARBERS
 function renderBarbers() {
   const el = document.getElementById('barbersTable');
   if (!state.barbers.length) {
@@ -749,22 +767,21 @@ function renderBarbers() {
   `).join('');
 }
 
-function addBarber() {
+async function addBarber() {
   const name = document.getElementById('newBarberName').value.trim();
   const specialty = document.getElementById('newBarberSpec').value.trim();
   const bio = document.getElementById('newBarberBio').value.trim();
   if (!name) { toast('Ingresá al menos el nombre', 'error'); return; }
-  state.barbers.push({ id: 'b' + Date.now(), name, specialty, bio });
-  storageSet('bs_barbers', state.barbers);
-  document.getElementById('newBarberName').value = '';
-  document.getElementById('newBarberSpec').value = '';
-  document.getElementById('newBarberBio').value = '';
-  renderBarbers();
-  renderBarberFilter();
-  toast('Barbero agregado', 'success');
+  try {
+    await addDoc(collection(db, 'barbers'), { name, specialty, bio });
+    document.getElementById('newBarberName').value = '';
+    document.getElementById('newBarberSpec').value = '';
+    document.getElementById('newBarberBio').value = '';
+    toast('Barbero agregado', 'success');
+  } catch (e) { console.error(e); toast('Error al agregar', 'error'); }
 }
 
-function editBarber(id) {
+async function editBarber(id) {
   const b = state.barbers.find(x => x.id === id);
   if (!b) return;
   const name = prompt('Nombre:', b.name);
@@ -773,26 +790,20 @@ function editBarber(id) {
   if (specialty === null) return;
   const bio = prompt('Bio:', b.bio || '');
   if (bio === null) return;
-  b.name = name.trim();
-  b.specialty = specialty.trim();
-  b.bio = bio.trim();
-  storageSet('bs_barbers', state.barbers);
-  renderBarbers();
-  renderBarberFilter();
-  toast('Barbero actualizado', 'success');
+  try {
+    await updateDoc(doc(db, 'barbers', id), { name: name.trim(), specialty: specialty.trim(), bio: bio.trim() });
+    toast('Barbero actualizado', 'success');
+  } catch (e) { console.error(e); toast('Error al actualizar', 'error'); }
 }
 
-function delBarber(id) {
+async function delBarber(id) {
   if (!confirm('¿Borrar este barbero? Los turnos existentes no se eliminan.')) return;
-  state.barbers = state.barbers.filter(b => b.id !== id);
-  storageSet('bs_barbers', state.barbers);
-  renderBarbers();
-  renderBarberFilter();
-  renderAppts();
-  toast('Barbero borrado', 'success');
+  try {
+    await deleteDoc(doc(db, 'barbers', id));
+    toast('Barbero borrado', 'success');
+  } catch (e) { console.error(e); toast('Error al borrar', 'error'); }
 }
 
-// SERVICES
 function renderServices() {
   const el = document.getElementById('servicesTable');
   if (!state.services.length) {
@@ -812,21 +823,21 @@ function renderServices() {
   `).join('');
 }
 
-function addService() {
+async function addService() {
   const name = document.getElementById('newServiceName').value.trim();
   const duration = parseInt(document.getElementById('newServiceDur').value);
   const price = parseInt(document.getElementById('newServicePrice').value);
   if (!name || !duration || isNaN(price) || price < 0) { toast('Completá todos los campos', 'error'); return; }
-  state.services.push({ id: 's' + Date.now(), name, duration, price });
-  storageSet('bs_services', state.services);
-  document.getElementById('newServiceName').value = '';
-  document.getElementById('newServiceDur').value = '';
-  document.getElementById('newServicePrice').value = '';
-  renderServices();
-  toast('Servicio agregado', 'success');
+  try {
+    await addDoc(collection(db, 'services'), { name, duration, price });
+    document.getElementById('newServiceName').value = '';
+    document.getElementById('newServiceDur').value = '';
+    document.getElementById('newServicePrice').value = '';
+    toast('Servicio agregado', 'success');
+  } catch (e) { console.error(e); toast('Error al agregar', 'error'); }
 }
 
-function editService(id) {
+async function editService(id) {
   const s = state.services.find(x => x.id === id);
   if (!s) return;
   const name = prompt('Nombre:', s.name);
@@ -835,26 +846,24 @@ function editService(id) {
   if (dur === null) return;
   const price = prompt('Precio ($):', s.price);
   if (price === null) return;
-  s.name = name.trim();
-  s.duration = parseInt(dur) || s.duration;
-  s.price = parseInt(price) || 0;
-  storageSet('bs_services', state.services);
-  renderServices();
-  renderAppts();
-  renderStats();
-  toast('Servicio actualizado', 'success');
+  try {
+    await updateDoc(doc(db, 'services', id), {
+      name: name.trim(),
+      duration: parseInt(dur) || s.duration,
+      price: parseInt(price) || 0
+    });
+    toast('Servicio actualizado', 'success');
+  } catch (e) { console.error(e); toast('Error al actualizar', 'error'); }
 }
 
-function delService(id) {
+async function delService(id) {
   if (!confirm('¿Borrar este servicio?')) return;
-  state.services = state.services.filter(s => s.id !== id);
-  storageSet('bs_services', state.services);
-  renderServices();
-  renderAppts();
-  toast('Servicio borrado', 'success');
+  try {
+    await deleteDoc(doc(db, 'services', id));
+    toast('Servicio borrado', 'success');
+  } catch (e) { console.error(e); toast('Error al borrar', 'error'); }
 }
 
-// HOURS
 function renderHours() {
   const el = document.getElementById('hoursList');
   const order = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'];
@@ -881,7 +890,7 @@ function clearDay(k) {
   document.getElementById(`h-${k}-close`).value = '';
 }
 
-function saveHours() {
+async function saveHours() {
   const order = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'];
   const newHours = {};
   for (const k of order) {
@@ -889,21 +898,23 @@ function saveHours() {
     const close = document.getElementById(`h-${k}-close`).value;
     newHours[k] = { open, close };
   }
-  state.hours = newHours;
-  storageSet('bs_hours', state.hours);
-  toast('Horarios guardados', 'success');
+  try {
+    await setDoc(doc(db, 'config', 'hours'), newHours);
+    state.hours = newHours;
+    toast('Horarios guardados', 'success');
+  } catch (e) { console.error(e); toast('Error al guardar', 'error'); }
 }
 
-// PASSWORD
-function changePassword() {
+async function changePassword() {
   const newPass = document.getElementById('newAdminPass').value;
   if (!newPass || newPass.length < 4) { toast('La contraseña debe tener al menos 4 caracteres', 'error'); return; }
-  storageSet('bs_password', newPass);
-  document.getElementById('newAdminPass').value = '';
-  toast('Contraseña actualizada', 'success');
+  try {
+    await setDoc(doc(db, 'config', 'auth'), { password: newPass });
+    document.getElementById('newAdminPass').value = '';
+    toast('Contraseña actualizada', 'success');
+  } catch (e) { console.error(e); toast('Error al actualizar', 'error'); }
 }
 
-// UTILS
 function escapeHtml(s) {
   if (!s) return '';
   return String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
@@ -919,6 +930,22 @@ function toast(msg, type = '') {
   el.className = 'toast show ' + type;
   setTimeout(() => el.classList.remove('show'), 3000);
 }
+
+window.tryLogin = tryLogin;
+window.logout = logout;
+window.switchTab = switchTab;
+window.renderAppts = renderAppts;
+window.delAppt = delAppt;
+window.clearAppts = clearAppts;
+window.addBarber = addBarber;
+window.editBarber = editBarber;
+window.delBarber = delBarber;
+window.addService = addService;
+window.editService = editService;
+window.delService = delService;
+window.clearDay = clearDay;
+window.saveHours = saveHours;
+window.changePassword = changePassword;
 
 init();
 </script>
